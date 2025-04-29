@@ -139,10 +139,10 @@ lambda_2 =   sqrt((X_0 + X_e - X[1] + a[1]*cos(phi_1) - b[1]*sin(phi_1))**2 + (Y
 lambda_3 =   sqrt((X_0 + X_e - X[2] + a[2]*cos(phi_1) - b[2]*sin(phi_1))**2 + (Y_0 + Y_e - Y[2] + a[2]*sin(phi_1) + b[2]*cos(phi_1))**2) # longueur du câble de la poulie 3 (en mm)
 lambda_4 =   sqrt((X_0 + X_e - X[3] + a[3]*cos(phi_1) - b[3]*sin(phi_1))**2 + (Y_0 + Y_e - Y[3] + a[3]*sin(phi_1) + b[3]*cos(phi_1))**2) # longueur du câble de la poulie 4 (en mm)
 # ---
-q_1 = lambda_1 / r # angle de rotation du moteur 1 (en °)
-q_2 = lambda_2 / r # angle de rotation du moteur 2 (en °)
-q_3 = lambda_3 / r # angle de rotation du moteur 3 (en °)
-q_4 = lambda_4 / r # angle de rotation du moteur 4 (en °)
+q_1 = lambda_1 / r # angle de rotation du moteur 1 (en rad)
+q_2 = lambda_2 / r # angle de rotation du moteur 2 (en rad)
+q_3 = lambda_3 / r # angle de rotation du moteur 3 (en rad)
+q_4 = lambda_4 / r # angle de rotation du moteur 4 (en rad)
 # ---
 p_1 = (200*q_1) / 2*np.pi # nombre de pas sur le moteur 1
 p_2 = (200*q_2) / 2*np.pi # nombre de pas sur le moteur 2
@@ -153,7 +153,7 @@ p_4 = (200*q_4) / 2*np.pi # nombre de pas sur le moteur 4
 
 
 
-################################# Calcul ######################################
+################################# Fonctions ###################################
 
 ## Modèle inverse - Calcul de la Jacobienne du modèle cinématique inverse
 def inverse():
