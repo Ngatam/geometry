@@ -11,12 +11,15 @@ import scipy
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+
 
 from numpy import linalg
-from sympy import sin, cos, sqrt, Matrix
+from numpy.linalg import pinv
 from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.animation as animation
-from sympy.abc import alpha, beta, phi, delta, theta, psi, omega
+from sympy import sin, cos, sqrt, Matrix
+from matplotlib.animation import FuncAnimation
+from sympy.abc import alpha, beta, delta, theta, psi, omega
 
 
 
@@ -151,9 +154,7 @@ p_4 = (200*q_4) / 2*np.pi # nombre de pas sur le moteur 4
 
 
 
-
-
-################################# Fonctions ###################################
+################################# Méthode 1 ###################################
 
 ## Modèle inverse - Calcul de la Jacobienne du modèle cinématique inverse
 def inverse():
@@ -247,6 +248,7 @@ def animation_test(longueur_1, longueur_2, longueur_3, longueur_4):
     plaque = None
 
     def update(frame):
+        
         nonlocal lines, texts, plaque
 
         for line in lines:
@@ -312,7 +314,22 @@ def animation_test(longueur_1, longueur_2, longueur_3, longueur_4):
     return ani
 
 
-def inverse_plot(X_e_final, Y_e_final, phi_1_final, nombre_iteration, temps):
+def animation_1(X_e_final, Y_e_final, phi_1_final, nombre_iteration, temps):
+    """
+    
+    Parameters
+    ----------
+    X_e_final : {float} Coordonnées sur l'axe x finale du centre de l'effecteur
+    Y_e_final : {float} Coordonnées sur l'axe y finale du centre de l'effecteur 
+    phi_1_final : {float} Angle de rotation finale autour de l'axe z du centre l'effecteur
+    nombre_iteration : {int} Nombre ditération pour la simulation
+    temps : {int} Temps necéssaire pour effectuer la simulation
+
+    Returns
+    -------
+    None.
+
+    """
     X1 = np.linspace(0, X_e_final, nombre_iteration)
     X2 = np.linspace(0, Y_e_final, nombre_iteration)
     PHI = np.linspace(0, phi_1_final, nombre_iteration)
@@ -425,5 +442,244 @@ def direct():
     J_pseudo_inv = np.dot(J_prod_inv, J_T)
     print("\nJ_pseudo_inv : \n", J_pseudo_inv)
     print("\nnp.shape(J_pseudo_inv) : \n", np.shape(J_pseudo_inv))
+    
+
+################################# Méthode 2 ###################################
+
+
+# Positions des poulies (points fixes) dans le plan
+poulies = np.array([
+    [l_1, h_1],  # P1 (en bas à droite)
+    [l_1, h_2],  # P2 (en haut à droite)
+    [0, h_1],    # P3 (en bas à gauche)
+    [0, h_2]     # P4 (en haut à gauche)
+])
+
+
+# Coordonnées des points d'attache de la plaque (dans son repère local)
+v_attache = np.array([
+    [ l/2, -L/2],  # Coin bas droite
+    [ l/2,  L/2],  # Coin haut droite
+    [-l/2, -L/2],  # Coin bas gauche
+    [-l/2,  L/2]   # Coin haut gauche
+])
+
+
+# Matrice de rotation 2D selon un angle phi
+def rotation_matrix(phi):
+    return np.array([
+        [np.cos(phi), -np.sin(phi)],
+        [np.sin(phi),  np.cos(phi)]
+    ])
+
+
+# Calcule les coordonnées globales des points d'attache de la plaque
+def compute_attachment_points(X, Y, phi):
+    R = rotation_matrix(phi)
+    return np.array([[X, Y]]) + (v_attache @ R.T)
+
+
+# Calcule les longueurs de câble entre poulies et coins de la plaque
+def cable_lengths(X, Y, phi):
+    A = compute_attachment_points(X, Y, phi)
+    return np.linalg.norm(A - poulies, axis=1)
+
+
+# Calcule la matrice Jacobienne ∂l/∂q (variation des longueurs par rapport à X, Y, phi)
+def jacobian(X, Y, phi):
+    A = compute_attachment_points(X, Y, phi)
+    R = rotation_matrix(phi)
+    J = np.zeros((4, 3))
+    for i in range(4):
+        diff = A[i] - poulies[i]  # vecteur du point poulie vers attache
+        d = np.linalg.norm(diff)  # longueur du câble
+        if d == 0:
+            continue  # évite division par zéro
+        dX = diff[0] / d  # dérivée partielle par rapport à X
+        dY = diff[1] / d  # dérivée partielle par rapport à Y
+        dphi_vec = R @ np.array([-v_attache[i][1], v_attache[i][0]])  # rotation du vecteur d’attache
+        dphi = np.dot(diff, dphi_vec) / d  # dérivée partielle par rapport à phi
+        J[i, :] = [dX, dY, dphi]
+    return J
+
+
+# Fonction principale de simulation
+def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_final, step, nb_points, epsilon):
+    """
+    Parameters
+    ----------
+    X_intial : {float} Coordonnées sur l'axe x finale du centre de l'effecteur initialement
+    Y_initial : {float} Coordonnées sur l'axe y finale du centre de l'effecteur initialement
+    phi_1_initial : {float} Angle de rotation finale autour de l'axe z du centre l'effecteur initialement
+    
+    X_final : {float} Coordonnées sur l'axe x finale du centre de l'effecteur
+    Y_final : {float} Coordonnées sur l'axe y finale du centre de l'effecteur 
+    phi_1_final : {float} Angle de rotation finale autour de l'axe z du centre l'effecteur
+    
+    step : {float} Taille des pas de la simulation
+    nb_points : {int} Nombre de points pour effectuer la simulation
+    epsilon : {int} Valeur en % de la bande d'arrêt
+
+    Returns
+    -------
+    Cette fonction fait la simulation du déplcement de l'effecteur du robot parallèle à câble de sa postion inital (le centre du repère)
+    à une position final de coordonée X_final, Y_final et avec un angle phi_1_final.
+    Elle affiche différent plot:
+        - le 1er est l'animation liée à cette simulation
+        - Le 2nd est constitué de 4 subplot qui chacun affichent la longueurs des 4 câbles en fonction des itérations
+        - Le 3ème  affiche la position du centre de l'effecteur en fonction de l'itération choisi
+        - le 4ème affiche la rotation du centre de l'effecteur en fonction de l'itération choisi
+        - Le 5ème affiche les vitesses linéaires des câbles en fonction de l'itération choisi
+        - Le 6ème affiche les vitesse de rotation des moteur en fonction de l'itération choisi 
+        """
+
+    # Initialisation à la position centrale
+    X0, Y0 , phi_1_0= X_inital, Y_initial, phi_1_initial
+    print("\nPosition initiale: X0 = ", X0, "Y0 = ", Y0, "phi_1_0 = ", phi_1_0)
+    X_traj, Y_traj, phi_traj = [X0], [Y0], [0.0]
+    
+    # Initialisation des longueurs de câbles
+    l_0 = cable_lengths(X0, Y0, 0.0)
+    l_traj = [l_0]
+    print("Longueurs des câbles initiales: ",l_0)
+    
+    X, Y, phi_1 = X0, Y0, phi_1_0
+   
+    # Initialisation des vitesses
+    v_traj = []      
+    
+    # Marge d'erreur sur les valeurs finales
+    epsilon_plus = 1 + (epsilon/100)
+    epsilon_moins = 1 - (epsilon/100)
+
+    # Boucle de simulation
+    for i in range(nb_points):
+        dx = X_final - X
+        dy = Y_final - Y
+        dphi = phi_1_final - phi_1
+        error = np.array([dx, dy, dphi])
+        if np.linalg.norm(error) < 1e-4:
+            break  # Sortie de la boucle si l’erreur est négligeable
+
+        J = jacobian(X, Y, phi_1)  # Jacobienne à l’instant courant
+        dl = J @ error * step  # Variation attendue des longueurs
+        lambda_reg = 1e-4  # Paramètre de régularisation
+        J_pseudo_inv = pinv(J.T @ J + lambda_reg * np.eye(3)) @ J.T  # Pseudo-inverse de la Jacobienne
+        delta_q = J_pseudo_inv @ (l_traj[-1] + dl - l_traj[-1])  # Variation de position
+
+        # Mise à jour de la position
+        X += delta_q[0]
+        Y += delta_q[1]
+        phi_1 += delta_q[2]
+        print("\nPosition : X = ", X, "Y = ", Y, "phi_1 = ", phi_1)
+        
+        X_traj.append(X)
+        Y_traj.append(Y)
+        phi_traj.append(phi_1)
+
+        # Calcul de la nouvelle longueur et vitesse des câbles
+        l_curr = cable_lengths(X, Y, phi_1)
+        l_prev = l_traj[-1]
+        v = (l_curr - l_prev) / step  # Vitesse estimée
+        v_traj.append(v)
+        l_traj.append(l_curr)
+        print("Longueurs des câbles : ",l_curr)
+
+            
+        # Arrêt si on a atteint la position finale à avec une marge de [Valeur finale * epsilon_moins; Valeur finale * epsilon_plus]
+        if X_final*epsilon_moins <= X <=  X_final * epsilon_plus and Y_final*epsilon_moins <= Y <=  Y_final * epsilon_plus and phi_1_final*epsilon_moins <= phi_1 <=  phi_1_final * epsilon_plus:
+            print("\nArrêt à l'itération:", i,"\n")
+            break
+        
+        
+    # Fonction d’animation graphique
+    def anim():
+        fig, ax = plt.subplots()
+        ax.set_xlim(-200, l_1 + 200)
+        ax.set_ylim(-200, h_2 + 200)
+        ax.set_aspect('equal')
+        plate, = ax.plot([], [], 'b-', lw=2)
+        cables, = ax.plot([], [], 'k--', lw=1)
+        center, = ax.plot([], [], 'ro')
+
+        def update(frame):
+            X, Y, phi_1 = X_traj[frame], Y_traj[frame], phi_traj[frame]
+            A = compute_attachment_points(X, Y, phi_1)
+            plate.set_data(A[:, 0].tolist() + [A[0, 0]], A[:, 1].tolist() + [A[0, 1]])
+            cable_x, cable_y = [], []
+            for i in [0, 1, 3, 2]:
+                cable_x += [poulies[i, 0], A[i, 0], None]
+                cable_y += [poulies[i, 1], A[i, 1], None]
+            cables.set_data(cable_x, cable_y)
+            center.set_data([X], [Y])
+            return plate, cables, center
+
+        ani = FuncAnimation(fig, update, frames=len(X_traj), interval=50, blit=True)
+        return ani
+
+    global ani
+    ani = anim()
+    plt.title("Simulation du Robot Parallèle à Câbles")
+
+    # Tracé des longueurs de câble
+    fig_var, axs_var = plt.subplots(nrows=2, ncols=2)
+    fig_var.suptitle("Tailles des câbles")
+    l_traj_vec = np.array(l_traj)
+    D1, D2, D3, D4 = l_traj_vec[:,0], l_traj_vec[:,1], l_traj_vec[:,2], l_traj_vec[:,3]
+    for ax, D, title, color in zip(axs_var.flat, [D4, D2, D3, D1], ["Câble 4", "Câble 2", "Câble 3", "Câble 1"], ["red", "green", "blue", "purple"]):
+        Etape = np.linspace(0, nb_points, np.shape(D1)[0])
+        ax.plot(Etape, D, marker='o', color=color)
+        ax.set_title(title)
+        ax.set_xlabel("Itération")
+        ax.set_ylabel("Longueur de câble [mm]")
+        ax.grid()
+
+    # Tracé de la position du centre de l’effecteur
+    fig_pos, ax_pos = plt.subplots()
+    fig_pos.suptitle("Position du centre de l'effecteur")
+    ax_pos.plot(X_traj, Y_traj, marker='o', color='orangered')
+    ax_pos.set_xlabel("X [mm]")
+    ax_pos.set_ylabel("Y [mm]")
+    ax_pos.grid()
+    
+    # Tracé de la rotation du centre de l’effecteur
+    fig_rot, ax_rot = plt.subplots()
+    fig_rot.suptitle("Rotation du centre de l'effecteur")
+    ax_rot.plot(Etape, phi_traj, marker='o', color='grey')
+    ax_rot.set_xlabel("Itération")
+    ax_rot.set_ylabel("Angle [rad]")
+    ax_rot.grid()
+
+    # Tracé des vitesses linéaires des câbles
+    fig_vit_lin, axs_vit_lin = plt.subplots(nrows=2, ncols=2)
+    fig_vit_lin.suptitle("Vitesses linéaires des câbles")
+    v_traj_vec = np.array(v_traj)
+    V1, V2, V3, V4 = v_traj_vec[:,0], v_traj_vec[:,1], v_traj_vec[:,2], v_traj_vec[:,3]
+    Etape_v = np.arange(len(V1))  # une étape de moins que les longueurs
+
+    for ax, V, title, color in zip(axs_vit_lin.flat, [V4, V2, V3, V1], ["Câble 4", "Câble 2", "Câble 3", "Câble 1"], ["red", "green", "blue", "purple"]):
+        ax.plot(Etape_v, V, marker='o', color=color)
+        ax.set_title(title)
+        ax.set_xlabel("Itération")
+        ax.set_ylabel("Vitesse [mm/itération]")
+        ax.grid()
+        
+    # Tracé des vitesses angulaires des moteurs
+    fig_vit_ang, axs_vit_ang = plt.subplots(nrows=2, ncols=2)
+    fig_vit_ang.suptitle("Vitesses angulaires des moteurs")
+    v_traj_vec = np.array(v_traj)
+    Omega1, Omega2, Omega3, Omega4 = r*v_traj_vec[:,0], r*v_traj_vec[:,1], r*v_traj_vec[:,2], r*v_traj_vec[:,3]
+    Etape_v = np.arange(len(V1))  # une étape de moins que les longueurs
+
+    for ax, Omega, title, color in zip(axs_vit_ang.flat, [Omega4, Omega2, Omega3, Omega1], ["Moteur 4", "Moteur 2", "Moteur 3", "Moteur 1"], ["red", "green", "blue", "purple"]):
+        ax.plot(Etape_v, Omega, marker='o', color=color)
+        ax.set_title(title)
+        ax.set_xlabel("Itération")
+        ax.set_ylabel("Vitesse [rad/itération]")
+        ax.grid()
+
+    # Affichage de tous les graphes
+    plt.show()
+
 
 
