@@ -558,11 +558,21 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         dy = Y_final - Y
         dphi = phi_1_final - phi_1
         error = np.array([dx, dy, dphi])
-        if np.linalg.norm(error) < 1e-4:
-            break  # Sortie de la boucle si l’erreur est négligeable
-
+        error_norm = np.linalg.norm(error)
+    
+        if error_norm < 1e-4:
+            break
+        # Direction normalisée de l'erreur
+        direction = error / error_norm
+        
+        # Vitesse constante (ou minimale) : par exemple 1 mm/itération
+        vitesse_constante = 1.0  # mm/itération
+        
+        # Déplacement souhaité avec vitesse fixe
+        target_move = direction * vitesse_constante
+        
         J = jacobian(X, Y, phi_1)  # Jacobienne à l’instant courant
-        dl = J @ error * step  # Variation attendue des longueurs
+        dl = J @ target_move  # Variation attendue des longueurs
         lambda_reg = 1e-4  # Paramètre de régularisation
         J_pseudo_inv = pinv(J.T @ J + lambda_reg * np.eye(3)) @ J.T  # Pseudo-inverse de la Jacobienne
         delta_q = J_pseudo_inv @ (l_traj[-1] + dl - l_traj[-1])  # Variation de position
