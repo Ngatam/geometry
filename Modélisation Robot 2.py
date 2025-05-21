@@ -114,7 +114,7 @@ h_1 = 400 # (en mm) hauteur poulie 1
 h_2 = 2180 # (en mm) hauteur poulie 2
 l = 230 # (en mm) largeur de la plaque de l'effecteur
 L = 230 # (en mm) longueur de la plaque de l'effecteur
-l_1 = 2150 # (en mm) distance entre 2 pieds de la structure
+l_1 = 1900 # (en mm) distance entre 2 poulie de la structure
 K = 0.5 # rapport de transmission de l'enrouleur
 e = 30 # (en mm) rayon de l'enrouleur 
 rho = 5 # (en mm) pas de l'enrouleur
@@ -135,8 +135,8 @@ Y_e = sympy.symbols("Y_e")
 phi_1 = sympy.symbols("phi_1")
 
 # Position intiale de l'effecteur - au centre du repère
-X_0 = 1075  # Position initiale du centre de la plaque en X
-Y_0 = 1090  # Position initiale du centre de la plaque en Y 
+X_0 = 1010  # Position initiale du centre de la plaque en X
+Y_0 = 1075  # Position initiale du centre de la plaque en Y 
 
 
 ## Modèle inverse - équations modèle analytique
