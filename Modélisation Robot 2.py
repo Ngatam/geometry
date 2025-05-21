@@ -13,6 +13,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+import numpy as np
+import pandas as pd
+from openpyxl import Workbook
 
 from numpy import linalg
 from numpy.linalg import pinv
@@ -478,7 +481,7 @@ def rotation_matrix(phi):
 # Calcule les coordonnées globales des points d'attache de la plaque
 def compute_attachment_points(X, Y, phi):
     R = rotation_matrix(phi)
-    print("np.array([[X, Y]]) : ", np.array([[X, Y]]))
+    #print("np.array([[X, Y]]) : ", np.array([[X, Y]]))
     return np.array([[X, Y]]) + (v_attache @ R.T)
 
 
@@ -534,6 +537,8 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         - le 4ème affiche la rotation du centre de l'effecteur en fonction de l'itération choisi
         - Le 5ème affiche les vitesses linéaires des câbles en fonction de l'itération choisi
         - Le 6ème affiche les vitesse de rotation des moteur en fonction de l'itération choisi 
+        
+    Cette fonction créé aussi un document xls avec les données de la simulation
         """
 
     # Initialisation à la position centrale
@@ -551,9 +556,6 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
     # Initialisation des vitesses
     v_traj = []      
     
-    # Marge d'erreur sur les valeurs finales
-    epsilon_plus = 1 + (epsilon/100)
-    epsilon_moins = 1 - (epsilon/100)
 
     # Boucle de simulation
     for i in range(nb_points):
@@ -598,10 +600,16 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         l_traj.append(l_curr)
         print("Longueurs des câbles : ",l_curr)
 
-            
         # Arrêt si on a atteint la position finale à avec une marge de [Valeur finale * epsilon_moins; Valeur finale * epsilon_plus]
-        if X_final*epsilon_moins <= X <=  X_final * epsilon_plus and Y_final*epsilon_moins <= Y <=  Y_final * epsilon_plus and phi_1_final*epsilon_moins <= phi_1 <=  phi_1_final * epsilon_plus:
-            print("\nArrêt à l'itération:", i,"\n")
+        tol = epsilon / 100 
+        abs_tol_x = tol * max(1.0, abs(X_final))
+        abs_tol_y = tol * max(1.0, abs(Y_final))
+        abs_tol_phi = tol * max(1.0, abs(phi_1_final))
+        
+        if abs(X - X_final) <= abs_tol_x and \
+           abs(Y - Y_final) <= abs_tol_y and \
+           abs(phi_1 - phi_1_final) <= abs_tol_phi:
+            print("\nArrêt à l'itération:", i, "\n")
             break
         
         
@@ -690,9 +698,59 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         ax.set_xlabel("Itération")
         ax.set_ylabel("Vitesse [rad/itération]")
         ax.grid()
-
+        
+    
     # Affichage de tous les graphes
     plt.show()
+    
+    
+    
+    #----------- Création du fichier xls avec les données des test -----------#
+    
+    # Listes avec les loongueurs des câbles
+    longeur_cable_1 = ["Longueurs câble 1"] + list(D1)
+    longeur_cable_2 = ["Longueurs câble 2"] + list(D2)
+    longeur_cable_3 = ["Longueurs câble 3"] + list(D3)
+    longeur_cable_4 = ["Longueurs câble 4"] + list(D4)
+
+    # Listes avec les vitesses des câbles
+    vitesse_cable_1 = ["Vitesses câble 1"] + list(V1)
+    vitesse_cable_2 = ["Vitesses câble 2"] + list(V2)
+    vitesse_cable_3 = ["Vitesses câble 3"] + list(V3)
+    vitesse_cable_4 = ["Vitesses câble 4"] + list(V4)
+
+    # Listes avec les coordonées du centre de l'effecteur
+    trajectoire_x = ["Coordonées du centre de l'effecteur sur l'axe x"] + list(X_traj)
+    trajectoire_y = ["Coordonées du centre de l'effecteur sur l'axe y"] + list(Y_traj)
 
 
+    # Regroupe-les dans une liste (ordre d’écriture)
+    arrays = [longeur_cable_1, longeur_cable_2, longeur_cable_3, longeur_cable_4,
+              vitesse_cable_1, vitesse_cable_2, vitesse_cable_3, vitesse_cable_4,
+              trajectoire_x, trajectoire_y]
 
+    # Nom de la feuille et du fichier
+    sheet_name = "Données de test numérique"  # Nom de la feuille
+    filename = "Data_test.xlsx" # Nom du fichier xls
+
+    # Paramètre : écriture verticale ou horizontale
+    ecriture_verticale = False  # Mettre False pour les mettre côte à côte
+
+    # Création du writer
+    with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+        start_row, start_col = 0, 0
+
+        for array in arrays:
+            df = pd.DataFrame(array)
+            # Écrit le DataFrame dans la feuille, à la position voulue
+            df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, startcol=start_col, index=False, header=False)
+
+            # Mise à jour de la position de départ pour le prochain array
+            if ecriture_verticale:
+                start_row += df.shape[0] + 1  # Ajoute une ligne vide entre les blocs
+            else:
+                start_col += df.shape[1] + 1  # Ajoute une colonne vide entre les blocs
+
+    print(f"\n\nLes tableaux ont été écrits dans la feuille '{sheet_name}' du fichier '{filename}'.")
+    
+    
