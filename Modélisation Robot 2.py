@@ -58,10 +58,10 @@ lambda_2 : longueur du câble de la poulie 2
 lambda_3 : longueur du câble de la poulie 3
 lambda_4 : longueur du câble de la poulie 4
 ---
-q_1 : position angulaire du moteur 1
-q_2 : position angulaire du moteur 2
-q_3 : position angulaire du moteur 3
-q_4 : position angulaire du moteur 4
+q_1 : position angulaire du moteur 1 (en radian)
+q_2 : position angulaire du moteur 2 (en radian)
+q_3 : position angulaire du moteur 3 (en radian)
+q_4 : position angulaire du moteur 4 (en radian)
 ---
 p_1 : nombre du pas sur le moteur 1
 p_2 : nombre du pas sur le moteur 2
@@ -654,6 +654,35 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         ax.set_xlabel("Itération")
         ax.set_ylabel("Longueur de câble [mm]")
         ax.grid()
+        
+        
+    # Tracé des positions des moteurs
+    fig_var, axs_var = plt.subplots(nrows=2, ncols=2)
+    fig_var.suptitle("Positions angulaires des moteurs")
+    q_traj_vec = np.array(l_traj)
+    Q1, Q2, Q3, Q4 = q_traj_vec[:,0]/r, q_traj_vec[:,1]/r, q_traj_vec[:,2]/r, q_traj_vec[:,3]/r
+    for ax, Q, title, color in zip(axs_var.flat, [Q4, Q2, Q3, Q1], ["Moteur 4", "Moteur 2", "Moteur 3", "Moteur 1"], ["red", "green", "blue", "purple"]):
+        Etape = np.linspace(0, nb_points, np.shape(D1)[0])
+        ax.plot(Etape, Q, marker='o', color=color)
+        ax.set_title(title)
+        ax.set_xlabel("Itération")
+        ax.set_ylabel("Position du moteur [radians]")
+        ax.grid()
+    
+    
+    # Tracé des pas
+    fig_var, axs_var = plt.subplots(nrows=2, ncols=2)
+    fig_var.suptitle("Pas des moteurs")
+    p_traj_vec = np.array(l_traj)
+    P1, P2, P3, P4 = 360*p_traj_vec[:,0]/(2*np.pi), 360*p_traj_vec[:,1]/(2*np.pi), 360*p_traj_vec[:,2]/(2*np.pi), 360*p_traj_vec[:,3]/(2*np.pi)
+    for ax, P, title, color in zip(axs_var.flat, [P4, P2, P3, P1], ["Moteur 4", "Moteur 2", "Moteur 3", "Moteur 1"], ["red", "green", "blue", "purple"]):
+        Etape = np.linspace(0, nb_points, np.shape(D1)[0])
+        ax.plot(Etape, P, marker='o', color=color)
+        ax.set_title(title)
+        ax.set_xlabel("Itération")
+        ax.set_ylabel("Pas du moteur")
+        ax.grid()
+    
 
     # Tracé de la position du centre de l’effecteur
     fig_pos, ax_pos = plt.subplots()
