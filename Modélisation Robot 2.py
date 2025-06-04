@@ -45,7 +45,7 @@ Y : position sur l'axe y_base des poulies
 a : position sur l'axe x_effecteur des points d'accroche
 b : position sur l'axe y_effecteur des points d'accroche
 ---
-r = K * (e**2 + (rho**2)/2*np.pi) : coefficient d'enroulement des enrouleurs (supposé identiques car même enrouleurs)
+r = K * (e**2 + (rho**2)/2*np.pi)**1/2 : coefficient d'enroulement des enrouleurs (supposé identiques car même enrouleurs)
 lambda_1 = r*q_1 : lambda 1, longeur du câble 1
 lambda_2 = r*q_2 : lambda 2, longeur du câble 2
 lambda_3 = r*q_3 : lambda 3, longeur du câble 3
@@ -122,7 +122,7 @@ pas_mot = 1.8 # (en °) pas du moteur => 200 pas pour 1 tour
 
 
 ## Coefficients pour le calcul
-r = K * (e**2 + (rho**2)/2*np.pi) # coefficient d'enroulement des enrouleurs
+r = K * (e**2 + (rho**2)/2*np.pi)**1/2 # coefficient d'enroulement des enrouleurs
 X = [l_1, l_1, 0, 0] # position sur l'axe x_base des poulies
 Y = [h_1, h_2, h_1, h_2] # position sur l'axe y_base des poulies 
 a = [l/2, l/2, -l/2, -l/2] # position sur l'axe x_effecteur des points d'accroche
