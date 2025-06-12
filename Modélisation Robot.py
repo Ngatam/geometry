@@ -7,134 +7,67 @@ Created on Mon Mar 17 14:08:22 2025
 ################################# Import ######################################
 
 import sympy
-import scipy
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-
-from numpy import linalg
 from numpy.linalg import pinv
-from mpl_toolkits.mplot3d import Axes3D
 from sympy import sin, cos, sqrt, Matrix
 from matplotlib.animation import FuncAnimation
 from sympy.abc import alpha, beta, delta, theta, psi, omega
 
 
 
-################################# Texte #######################################
-
-"""
----- Paramètres du système ----
-h_1 = 400 : hauteur poulie 1 (en mm)
-h_2 = 2180 : hauteur poulie 2 (en mm)
-L = 230 : longeur de la plaque de l'effecteur (en mm)
-l = 230 : largeur de la plaque de l'effecteur (en mm)
-l_1 = 2150 : distance entre 2 pieds de la structure (en mm)
-K = 1.5 : rapport de transmission du ième enrouleur
-e = 30 : rayon de l'enroleur i (en mm) 
-rho = 0.005 : pas de l'enrouleur i (en mm)
-
----- Coefficients pour le calcul ----
-X : position sur l'axe x_base des poulies 
-Y : position sur l'axe y_base des poulies 
-a : position sur l'axe x_effecteur des points d'accroche
-b : position sur l'axe y_effecteur des points d'accroche
----
-r = K * (e**2 + (rho**2)/2*np.pi) : coefficient d'enroulement des enrouleurs (supposé identiques car même enrouleurs)
-lambda_1 = r*q_1 : lambda 1, longeur du câble 1
-lambda_2 = r*q_2 : lambda 2, longeur du câble 2
-lambda_3 = r*q_3 : lambda 3, longeur du câble 3
-lambda_4 = r*q_4 : lambda 4, longeur du câble 4
-
-
----- Variables ----
-lambda_1 : longueur du câble de la poulie 1
-lambda_2 : longueur du câble de la poulie 2
-lambda_3 : longueur du câble de la poulie 3
-lambda_4 : longueur du câble de la poulie 4
----
-q_1 : position angulaire du moteur 1
-q_2 : position angulaire du moteur 2
-q_3 : position angulaire du moteur 3
-q_4 : position angulaire du moteur 4
----
-p_1 : nombre du pas sur le moteur 1
-p_2 : nombre du pas sur le moteur 2
-p_3 : nombre du pas sur le moteur 3
-p_4 : nombre du pas sur le moteur 4
----
-Xe: position de l'effecteur sur l'axe X de la structure
-Ye: position de l'effecteur sur l'axe Y de la structure
-phi_1 : position angulaire de l'effecteur par rapport au repère de la base
-
-
----- Equations ----
-lambda_1 = - sqrt((X_e - X[0] + a[0]*cos(phi_1) - b[0]*sin(phi_1))**2 + (Y_e - Y[0] + a[0]*sin(phi_1) + b[0]*cos(phi_1))**2)
-lambda_2 =   sqrt((X_e - X[1] + a[1]*cos(phi_1) - b[1]*sin(phi_1))**2 + (Y_e - Y[1] + a[1]*sin(phi_1) + b[1]*cos(phi_1))**2)
-lambda_3 =   sqrt((X_e - X[2] + a[2]*cos(phi_1) - b[2]*sin(phi_1))**2 + (Y_e - Y[2] + a[2]*sin(phi_1) + b[2]*cos(phi_1))**2)
-lambda_4 = - sqrt((X_e - X[3] + a[3]*cos(phi_1) - b[3]*sin(phi_1))**2 + (Y_e - Y[3] + a[3]*sin(phi_1) + b[3]*cos(phi_1))**2)
----
-q_1 = lambda_1 / r
-q_2 = lambda_2 / r
-q_3 = lambda_3 / r
-q_4 = lambda_4 / r
----
-pas_1 = (360*q_1) / 2*np.pi
-pas_2 = (360*q_2) / 2*np.pi
-pas_3 = (360*q_3) / 2*np.pi
-pas_4 = (360*q_4) / 2*np.pi
----
-Poulie 1 et 3 : {'-' : Dérouler, '+': Enrouler} 
-Poulie 2 et 4 : {'-': Enrouler, '+': Dérouler}
-
-Par convention, le sens trigonométrique est noté '+', 
-On va donc considérer qu'il s'agit de l'action de dérouler du câble
-On va donc avoir sur toutes les poulies:
-    '-' -> Enrouler du câble sur la poulie
-    '-' -> sens trigonométrique des poulies 1 et 4, sens horaire des poulies 2 et 3
-    
-    '+' -> Dérouler du câbles sur la poulie
-    '+' -> sens trigonométrique des poulies 2 et 3, sens horaire des poulies 1 et 4
-    
-    Pour avoir cette logique sur tout les poulies, on doit mettre des '-' devant les calculs de lambda_1 et lambda_4
-
-"""
-
-
-
-################################# Définition ##################################
+############################# Paramètres du système ###########################
 
 ## Paramètres du système
 h_1 = 400 # (en mm) hauteur poulie 1
 h_2 = 2180 # (en mm) hauteur poulie 2
 l = 230 # (en mm) largeur de la plaque de l'effecteur
 L = 230 # (en mm) longueur de la plaque de l'effecteur
-l_1 = 2150 # (en mm) distance entre 2 pieds de la structure
+l_1 = 1900 # (en mm) distance entre 2 poulie de la structure
 K = 0.5 # rapport de transmission de l'enrouleur
 e = 30 # (en mm) rayon de l'enrouleur 
 rho = 5 # (en mm) pas de l'enrouleur
 pas_mot = 1.8 # (en °) pas du moteur => 200 pas pour 1 tour
 
+# Positions des poulies (points fixes) dans le plan
+poulies = np.array([
+    [l_1, h_1],  # P1 (en bas à droite)
+    [l_1, h_2],  # P2 (en haut à droite)
+    [0, h_1],    # P3 (en bas à gauche)
+    [0, h_2]     # P4 (en haut à gauche)
+])
+
+# Coordonnées des points d'attache de la plaque (dans son repère local)
+v_attache = np.array([
+    [ l/2, -L/2],  # Coin bas droite
+    [ l/2,  L/2],  # Coin haut droite
+    [-l/2, -L/2],  # Coin bas gauche
+    [-l/2,  L/2]   # Coin haut gauche
+])
+
+# Position intiale de l'effecteur - au centre du repère
+X_0 = 1010  # Position initiale du centre de la plaque en X
+Y_0 = 1075  # Position initiale du centre de la plaque en Y 
+
+## Modèle inverse - variables - position de l'effecteur
+X_e = sympy.symbols("X_e") # position de l'effecteur sur l'axe X de la structure
+Y_e = sympy.symbols("Y_e") # position de l'effecteur sur l'axe Y de la structure
+phi_1 = sympy.symbols("phi_1") # position angulaire de l'effecteur par rapport au repère de la base
+
+
+
+############################# Equations du système ############################
 
 ## Coefficients pour le calcul
-r = K * (e**2 + (rho**2)/2*np.pi) # coefficient d'enroulement des enrouleurs
+r = K * (e**2 + (rho**2)/2*np.pi)**1/2 # coefficient d'enroulement des enrouleurs
 X = [l_1, l_1, 0, 0] # position sur l'axe x_base des poulies
 Y = [h_1, h_2, h_1, h_2] # position sur l'axe y_base des poulies 
 a = [l/2, l/2, -l/2, -l/2] # position sur l'axe x_effecteur des points d'accroche
 b = [-L/2, L/2, -L/2, L/2] # position sur l'axe y_effecteur des points d'accroche
-
-
-## Modèle inverse - variables - position de l'effecteur
-X_e = sympy.symbols("X_e")
-Y_e = sympy.symbols("Y_e")
-phi_1 = sympy.symbols("phi_1")
-
-# Position intiale de l'effecteur - au centre du repère
-X_0 = 1075  # Position initiale du centre de la plaque en X
-Y_0 = 1090  # Position initiale du centre de la plaque en Y 
-
 
 ## Modèle inverse - équations modèle analytique
 lambda_1 =   sqrt((X_0 + X_e - X[0] + a[0]*cos(phi_1) - b[0]*sin(phi_1))**2 + (Y_0 + Y_e - Y[0] + a[0]*sin(phi_1) + b[0]*cos(phi_1))**2) # longueur du câble de la poulie 1 (en mm)
@@ -448,25 +381,6 @@ def direct():
 
 ################################# Méthode 2 ###################################
 
-
-# Positions des poulies (points fixes) dans le plan
-poulies = np.array([
-    [l_1, h_1],  # P1 (en bas à droite)
-    [l_1, h_2],  # P2 (en haut à droite)
-    [0, h_1],    # P3 (en bas à gauche)
-    [0, h_2]     # P4 (en haut à gauche)
-])
-
-
-# Coordonnées des points d'attache de la plaque (dans son repère local)
-v_attache = np.array([
-    [ l/2, -L/2],  # Coin bas droite
-    [ l/2,  L/2],  # Coin haut droite
-    [-l/2, -L/2],  # Coin bas gauche
-    [-l/2,  L/2]   # Coin haut gauche
-])
-
-
 # Matrice de rotation 2D selon un angle phi
 def rotation_matrix(phi):
     return np.array([
@@ -475,22 +389,21 @@ def rotation_matrix(phi):
     ])
 
 
-# Calcule les coordonnées globales des points d'attache de la plaque
+# Calcul des coordonnées globales des points d'attache de la plaque
 def compute_attachment_points(X, Y, phi):
     R = rotation_matrix(phi)
-    print("np.array([[X, Y]]) : ", np.array([[X, Y]]))
     return np.array([[X, Y]]) + (v_attache @ R.T)
 
 
-# Calcule les longueurs de câble entre poulies et coins de la plaque
+# Calcul des longueurs de câble entre poulies et coins de la plaque
 def cable_lengths(X, Y, phi):
     A = compute_attachment_points(X, Y, phi) # Calcul les coordonées des points d'attache de la plaque
     return np.linalg.norm(A - poulies, axis=1) # Renvoie la norme de la matrice qui est la différence des coordonées des points d'attache de la plaque actuellement et les coordonnées des poulies initialement
 
 
-# Calcule la matrice Jacobienne ∂l/∂q (variation des longueurs par rapport à X, Y, phi)
+# Calcul de la Jacobienne d_rond lambda/ d_rond X (variation des longueurs des câbles par rapport à X, Y, phi)
 def jacobian(X, Y, phi):
-    A = compute_attachment_points(X, Y, phi)  # Calcul les coodonées des points d'attache de la plaque
+    A = compute_attachment_points(X, Y, phi)  # Calcul les coordonées des points d'attache de la plaque
     R = rotation_matrix(phi) # Matrice de rotation autour de l'axe z
     J = np.zeros((4, 3)) # Initialisation de la Jacobienne
     for i in range(4):
@@ -507,7 +420,7 @@ def jacobian(X, Y, phi):
 
 
 # Fonction principale de simulation
-def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_final, step, nb_points, epsilon):
+def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_final, V_min, step, nb_points, epsilon):
     """
     Parameters
     ----------
@@ -519,8 +432,9 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
     Y_final : {float} Coordonnées sur l'axe y finale du centre de l'effecteur 
     phi_1_final : {float} Angle de rotation finale autour de l'axe z du centre l'effecteur
     
+    V_min : {float} Vitesse minimale de l'effecteur
     step : {float} Taille des pas de la simulation
-    nb_points : {int} Nombre de points pour effectuer la simulation
+    nb_points : {int} Nombre de points pour effectuer la simulation (en seconde)
     epsilon : {int} Valeur en % de la bande d'arrêt
 
     Returns
@@ -534,49 +448,55 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         - le 4ème affiche la rotation du centre de l'effecteur en fonction de l'itération choisi
         - Le 5ème affiche les vitesses linéaires des câbles en fonction de l'itération choisi
         - Le 6ème affiche les vitesse de rotation des moteur en fonction de l'itération choisi 
+        
+    Cette fonction créé aussi un document xls avec les données de la simulation
         """
-
-    # Initialisation à la position centrale
-    X0, Y0 , phi_1_0= X_inital, Y_initial, phi_1_initial
+    # --------------- Initialisation des paramètres --------------------------#
+    
+    # Initialisation à la position initiale
+    X0, Y0 , phi_1_0 = X_inital, Y_initial, phi_1_initial
     print("\nPosition initiale: X0 = ", X0, "Y0 = ", Y0, "phi_1_0 = ", phi_1_0)
-    X_traj, Y_traj, phi_traj = [X0], [Y0], [0.0]
+    X_traj, Y_traj, phi_traj = [X0], [Y0], [phi_1_0]
     
     # Initialisation des longueurs de câbles
     l_0 = cable_lengths(X0, Y0, 0.0)
     l_traj = [l_0]
-    print("Longueurs des câbles initiales: ",l_0)
+    print("Longueurs des câbles initiales: ",phi_1_0)
     
     X, Y, phi_1 = X0, Y0, phi_1_0
    
     # Initialisation des vitesses
     v_traj = []      
     
-    # Marge d'erreur sur les valeurs finales
-    epsilon_plus = 1 + (epsilon/100)
-    epsilon_moins = 1 - (epsilon/100)
 
-    # Boucle de simulation
+    # ----------------- Boucle de simulation ---------------------------------#
+    
     for i in range(nb_points):
-        dx = X_final - X
+        dx = X_final - X 
         dy = Y_final - Y
         dphi = phi_1_final - phi_1
         error = np.array([dx, dy, dphi])
         error_norm = np.linalg.norm(error)
     
+        # Pour éviter de diviser par 0
         if error_norm < 1e-4:
             break
-        # Direction normalisée de l'erreur
-        direction = error / error_norm
         
-        # Vitesse constante (ou minimale) : par exemple 1 mm/itération
-        vitesse_constante = 1.0  # mm/itération
+        # Direction normalisée de l'erreur
+        direction = error / error_norm 
+        
+        # Vitesse constante (ou minimale)
+        vitesse_constante = V_min  # mm/itération
         
         # Déplacement souhaité avec vitesse fixe
         target_move = direction * vitesse_constante
         
-        J = jacobian(X, Y, phi_1)  # Jacobienne à l’instant courant
-        dl = J @ target_move  # Variation attendue des longueurs
+        # Calcul de la Jacobienne
+        J = jacobian(X, Y, phi_1)  # Jacobienne (d_rond L/ d_rond X); X = [x, y, phi_1) à l’instant courant 
+        dl = J @ target_move  # Variation attendue des longueurs des câbles
         lambda_reg = 1e-4  # Paramètre de régularisation
+        
+        # Calcul de la pseudo inverse de la Jacobienne pour estimer variation de la position de la plaque
         J_pseudo_inv = pinv(J.T @ J + lambda_reg * np.eye(3)) @ J.T  # Pseudo-inverse de la Jacobienne
         delta_q = J_pseudo_inv @ (l_traj[-1] + dl - l_traj[-1])  # Variation de position
 
@@ -586,6 +506,7 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         phi_1 += delta_q[2]
         print("\nPosition : X = ", X, "Y = ", Y, "phi_1 = ", phi_1)
         
+        # Stockage des nouvelles valeures
         X_traj.append(X)
         Y_traj.append(Y)
         phi_traj.append(phi_1)
@@ -598,14 +519,21 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         l_traj.append(l_curr)
         print("Longueurs des câbles : ",l_curr)
 
-            
         # Arrêt si on a atteint la position finale à avec une marge de [Valeur finale * epsilon_moins; Valeur finale * epsilon_plus]
-        if X_final*epsilon_moins <= X <=  X_final * epsilon_plus and Y_final*epsilon_moins <= Y <=  Y_final * epsilon_plus and phi_1_final*epsilon_moins <= phi_1 <=  phi_1_final * epsilon_plus:
-            print("\nArrêt à l'itération:", i,"\n")
+        tol = epsilon / 100 
+        abs_tol_x = tol * max(1.0, abs(X_final))
+        abs_tol_y = tol * max(1.0, abs(Y_final))
+        abs_tol_phi = tol * max(1.0, abs(phi_1_final))
+        
+        if abs(X - X_final) <= abs_tol_x and \
+           abs(Y - Y_final) <= abs_tol_y and \
+           abs(phi_1 - phi_1_final) <= abs_tol_phi:
+            print("\nArrêt à l'itération:", i, "\n")
             break
         
         
-    # Fonction d’animation graphique
+    # ----------------- Animation graphique ----------------------------------#
+    
     def anim():
         fig, ax = plt.subplots()
         ax.set_xlim(-200, l_1 + 200)
@@ -634,6 +562,10 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
     ani = anim()
     plt.title("Simulation du Robot Parallèle à Câbles")
 
+    
+
+    # ------------------------- Tracés ---------------------------------------#
+
     # Tracé des longueurs de câble
     fig_var, axs_var = plt.subplots(nrows=2, ncols=2)
     fig_var.suptitle("Tailles des câbles")
@@ -646,6 +578,35 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         ax.set_xlabel("Itération")
         ax.set_ylabel("Longueur de câble [mm]")
         ax.grid()
+        
+        
+    # Tracé des positions des moteurs
+    fig_var, axs_var = plt.subplots(nrows=2, ncols=2)
+    fig_var.suptitle("Positions angulaires des moteurs")
+    q_traj_vec = np.array(l_traj)
+    Q1, Q2, Q3, Q4 = q_traj_vec[:,0]/r, q_traj_vec[:,1]/r, q_traj_vec[:,2]/r, q_traj_vec[:,3]/r
+    for ax, Q, title, color in zip(axs_var.flat, [Q4, Q2, Q3, Q1], ["Moteur 4", "Moteur 2", "Moteur 3", "Moteur 1"], ["red", "green", "blue", "purple"]):
+        Etape = np.linspace(0, nb_points, np.shape(D1)[0])
+        ax.plot(Etape, Q, marker='o', color=color)
+        ax.set_title(title)
+        ax.set_xlabel("Itération")
+        ax.set_ylabel("Position du moteur [radians]")
+        ax.grid()
+    
+    
+    # Tracé des pas
+    fig_var, axs_var = plt.subplots(nrows=2, ncols=2)
+    fig_var.suptitle("Pas des moteurs")
+    p_traj_vec = np.array(l_traj)
+    P1, P2, P3, P4 = 360*p_traj_vec[:,0]/(2*np.pi), 360*p_traj_vec[:,1]/(2*np.pi), 360*p_traj_vec[:,2]/(2*np.pi), 360*p_traj_vec[:,3]/(2*np.pi)
+    for ax, P, title, color in zip(axs_var.flat, [P4, P2, P3, P1], ["Moteur 4", "Moteur 2", "Moteur 3", "Moteur 1"], ["red", "green", "blue", "purple"]):
+        Etape = np.linspace(0, nb_points, np.shape(D1)[0])
+        ax.plot(Etape, P, marker='o', color=color)
+        ax.set_title(title)
+        ax.set_xlabel("Itération")
+        ax.set_ylabel("Pas du moteur")
+        ax.grid()
+    
 
     # Tracé de la position du centre de l’effecteur
     fig_pos, ax_pos = plt.subplots()
@@ -690,9 +651,59 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         ax.set_xlabel("Itération")
         ax.set_ylabel("Vitesse [rad/itération]")
         ax.grid()
-
+        
+    
     # Affichage de tous les graphes
     plt.show()
+    
+    
+    
+    #----------- Création du fichier xls avec les données des test -----------#
+    
+    # Listes avec les loongueurs des câbles
+    longeur_cable_1 = ["Longueurs câble 1"] + list(D1)
+    longeur_cable_2 = ["Longueurs câble 2"] + list(D2)
+    longeur_cable_3 = ["Longueurs câble 3"] + list(D3)
+    longeur_cable_4 = ["Longueurs câble 4"] + list(D4)
+
+    # Listes avec les vitesses des câbles
+    vitesse_cable_1 = ["Vitesses câble 1"] + list(V1)
+    vitesse_cable_2 = ["Vitesses câble 2"] + list(V2)
+    vitesse_cable_3 = ["Vitesses câble 3"] + list(V3)
+    vitesse_cable_4 = ["Vitesses câble 4"] + list(V4)
+
+    # Listes avec les coordonées du centre de l'effecteur
+    trajectoire_x = ["Coordonées du centre de l'effecteur sur l'axe x"] + list(X_traj)
+    trajectoire_y = ["Coordonées du centre de l'effecteur sur l'axe y"] + list(Y_traj)
 
 
+    # Regroupe-les dans une liste (ordre d’écriture)
+    arrays = [longeur_cable_1, longeur_cable_2, longeur_cable_3, longeur_cable_4,
+              vitesse_cable_1, vitesse_cable_2, vitesse_cable_3, vitesse_cable_4,
+              trajectoire_x, trajectoire_y]
 
+    # Nom de la feuille et du fichier
+    sheet_name = "Données de test numérique"  # Nom de la feuille
+    filename = "Data_test.xlsx" # Nom du fichier xls
+
+    # Paramètre : écriture verticale ou horizontale
+    ecriture_verticale = False  # Mettre False pour les mettre côte à côte
+
+    # Création du writer
+    with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+        start_row, start_col = 0, 0
+
+        for array in arrays:
+            df = pd.DataFrame(array)
+            # Écrit le DataFrame dans la feuille, à la position voulue
+            df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, startcol=start_col, index=False, header=False)
+
+            # Mise à jour de la position de départ pour le prochain array
+            if ecriture_verticale:
+                start_row += df.shape[0] + 1  # Ajoute une ligne vide entre les blocs
+            else:
+                start_col += df.shape[1] + 1  # Ajoute une colonne vide entre les blocs
+
+    print(f"\n\nLes tableaux ont été écrits dans la feuille '{sheet_name}' du fichier '{filename}'.")
+    
+    
