@@ -392,6 +392,8 @@ def rotation_matrix(phi):
 # Calcul des coordonnées globales des points d'attache de la plaque
 def compute_attachment_points(X, Y, phi):
     R = rotation_matrix(phi)
+    M = np.array([[X, Y]]) + (v_attache @ R.T)
+    print("compute_attachement_point :", np.shape(np.array([[X, Y]])))
     return np.array([[X, Y]]) + (v_attache @ R.T)
 
 
@@ -493,12 +495,12 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         
         # Calcul de la Jacobienne
         J = jacobian(X, Y, phi_1)  # Jacobienne (d_rond L/ d_rond X); X = [x, y, phi_1) à l’instant courant 
-        dl = J @ target_move  # Variation attendue des longueurs des câbles
-        lambda_reg = 1e-4  # Paramètre de régularisation
         
         # Calcul de la pseudo inverse de la Jacobienne pour estimer variation de la position de la plaque
-        J_pseudo_inv = pinv(J.T @ J + lambda_reg * np.eye(3)) @ J.T  # Pseudo-inverse de la Jacobienne
-        delta_q = J_pseudo_inv @ (l_traj[-1] + dl - l_traj[-1])  # Variation de position
+        J_pseudo_inv = pinv(J.T @ J) @ J.T  # Pseudo-inverse de la 
+        dl = J @ target_move  # Variation attendue des longueurs des câbles
+        delta_q = J_pseudo_inv @ dl  # Variation de position à partir de la longueur des câbles attendues
+        
 
         # Mise à jour de la position
         X += delta_q[0]
@@ -519,7 +521,7 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         l_traj.append(l_curr)
         print("Longueurs des câbles : ",l_curr)
 
-        # Arrêt si on a atteint la position finale à avec une marge de [Valeur finale * epsilon_moins; Valeur finale * epsilon_plus]
+        # Arrêt si on a atteint la position finale à avec une marge de [Valeur finale * epsilon/100; Valeur finale * epsilon/100]
         tol = epsilon / 100 
         abs_tol_x = tol * max(1.0, abs(X_final))
         abs_tol_y = tol * max(1.0, abs(Y_final))
