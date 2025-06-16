@@ -6,6 +6,7 @@ Created on Mon Mar 17 14:08:22 2025
 """
 ################################# Import ######################################
 
+import math
 import sympy
 
 import numpy as np
@@ -32,6 +33,8 @@ K = 0.5 # rapport de transmission de l'enrouleur
 e = 30 # (en mm) rayon de l'enrouleur 
 rho = 5 # (en mm) pas de l'enrouleur
 pas_mot = 1.8 # (en °) pas du moteur => 200 pas pour 1 tour
+r_p = 40 #(en mm) rayon interne des poulies
+lambda_troisieme = 740 # (en mm) longueur de cable supposée constante entre l'enrouleur et la poulie (pas de centre a centre)
 
 # Positions des poulies (points fixes) dans le plan
 poulies = np.array([
@@ -126,6 +129,9 @@ def jacobian(X, Y, phi):
         dphi = np.dot(diff, dphi_vec) / d  # Dérivée partielle par rapport à phi
         J[i, :] = [dX, dY, dphi] # Remplissage de la Jacobienne sur la ligne i
     return J
+
+
+def rectification_lambda
 
 
 # Fonction principale de simulation
