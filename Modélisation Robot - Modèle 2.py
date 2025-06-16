@@ -85,301 +85,9 @@ p_2 = (200*q_2) / 2*np.pi # nombre de pas sur le moteur 2
 p_3 = (200*q_3) / 2*np.pi # nombre de pas sur le moteur 3
 p_4 = (200*q_4) / 2*np.pi # nombre de pas sur le moteur 4
 
-
-
-################################# Méthode 1 ###################################
-
-## Modèle inverse - Calcul de la Jacobienne du modèle cinématique inverse
-def inverse():
-    X = Matrix([X_e, Y_e, phi_1]) # Entrées
-    Y = Matrix([p_1, p_2, p_3, p_4]) # Sorties
-    J = Y.jacobian(X) # Jacobienne du modèle cinématique inverse 
-    print("---- Modèle cinématique inverse ---- ")
-    print("Variables d'entrée : \n", X)
-    print("\nVariables de sortie : \n", Y)
-    print("\nJacobienne : \n", J)
-    return J
-
-
-## Modèle inverse - Calcul de la Jacobienne du modèle cinématique inverse et test
-def inverse_test(X_e_exp, Y_e_exp, phi_1_exp, temps):
-    X_entrées = Matrix([X_e, Y_e, phi_1]) # Entrées
-    Y_sorties = Matrix([lambda_1, lambda_2, lambda_3, lambda_4]) # Sorties
-    J = Y_sorties.jacobian(X_entrées) # Jacobienne du modèle cinématique inverse 
-    print("\n---- Modèle cinématique inverse pour test  ---- ")
-    #-  print("Variables d'entrée : \n", X)
-    #- print("\nVariables de sortie : \n", Y)
-    #- print("\nJacobienne : \n", J)
-
-    J = J.subs({X_e: X_e_exp, Y_e: Y_e_exp, phi_1: phi_1_exp})  # Substitution des valeurs d'entrées sur la Jacobienne
-    
-    # Création du vecteur des vitesses des l'effecteur, sur l'axe x, sur l'axe y et de rotation autour de l'axe z
-    V_X_entrées = X_entrées.subs({X_e: X_e_exp/temps, Y_e: Y_e_exp/temps, phi_1: phi_1_exp/temps})  
-
-    #- print("\nJacobienne  avec les valeurs expérimentales: \n", J) 
-    V_lambda_exp = np.dot(J, V_X_entrées) # calcul le produit matriciel de la Jacobienne et de la matrice des variables d'entrées
-    D_lambda_exp = V_lambda_exp*temps
-    
-    # Ajout de la longueur de base pour l'effecteur au centre
-    longueur_initial = 930     
-    for i in range(0, 4):     
-        D_lambda_exp[i][0] = D_lambda_exp[i][0] + longueur_initial
-        
-    
-    print("Pour un déplacement de: (", X_e_exp, "," , Y_e_exp, "), par rapport au point central, et un angle de :", phi_1_exp)
-    print("\nVitesse de déroulage/enroulage de câble par les moteurs (en mm)")
-    print("{'+' : dérouler du câble, '-': enrouler du câble} :")
-    i, j = np.shape(V_lambda_exp)
-    for k in  range(0, i):
-        print("\nCâble ", k+1, " :")
-        print("Vitesse : ", round(float(V_lambda_exp[k][0]), 3), " mm/s") 
-        print("Longeur du câble : ", round(float(V_lambda_exp[k][0]*temps), 3), "mm") 
-
-    return V_lambda_exp, D_lambda_exp
-
-
-def animation_test(longueur_1, longueur_2, longueur_3, longueur_4):
-    print("\nlongueur 1 = ", longueur_1)
-    print("\nlongueur 2 = ", longueur_2)
-    print("\nlongueur 3 = ", longueur_3)
-    print("\nlongueur 4 = ", longueur_4)
-
-    cable_lengths = {
-        "Câble 1": longueur_1,
-        "Câble 2": longueur_2,
-        "Câble 3": longueur_3,
-        "Câble 4": longueur_4,
-    }
-
-    num_frames = len(longueur_1)
-    plaque_size = 230
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.set_xlim(0, 2150)
-    ax.set_ylim(0, 2150)
-    ax.set_zlim(0, 500)
-    ax.set_title("Déplacement de la plaque dans le plan XY")
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.set_zlabel("Z")
-
-    # Repère 3D
-    ax.quiver(0, 0, 0, 100, 0, 0, color='r', arrow_length_ratio=0.05)
-    ax.quiver(0, 0, 0, 0, 100, 0, color='g', arrow_length_ratio=0.05)
-    ax.quiver(0, 0, 0, 0, 0, 100, color='b', arrow_length_ratio=0.05)
-
-    anchor_points = {
-        "Câble 1": [2150, 0, 0],
-        "Câble 2": [2150, 2150, 0],
-        "Câble 3": [0, 0, 0],
-        "Câble 4": [0, 2150, 0],
-    }
-
-    lines = []
-    texts = []
-    plaque = None
-
-    def update(frame):
-        
-        nonlocal lines, texts, plaque
-
-        for line in lines:
-            line.remove()
-        for text in texts:
-            text.remove()
-        if plaque:
-            plaque.remove()
-
-        lines = []
-        texts = []
-
-        # Longueurs des câbles à cet instant
-        l1 = cable_lengths["Câble 1"][frame]
-        l2 = cable_lengths["Câble 2"][frame]
-        l3 = cable_lengths["Câble 3"][frame]
-        l4 = cable_lengths["Câble 4"][frame]
-        
-        print("\nl1 = ", l1)
-        print("l2 = ", l2)
-        print("l3 = ", l3)
-        print("l4 = ", l4)
-        
-
-        # Calcul et affichage du centre de la plaque
-        dx = (l3 + l4 - l1 - l2) * 0.25
-        dy = (l1 + l3 - l2 - l4) * 0.25
-        cx = 1075 + dx
-        cy = 1075 + dy
-        cz = 0
-        print("Centre de la plaque en :", round(cx, 3), round(cy, 3))
-        
     
 
-        half = plaque_size / 2
-        p1 = [cx + half, cy - half, cz]
-        p2 = [cx + half, cy + half, cz]
-        p3 = [cx - half, cy - half, cz]
-        p4 = [cx - half, cy + half, cz]
-
-        for name, anchor, corner in zip(
-            ["Câble 1", "Câble 2", "Câble 3", "Câble 4"],
-            [anchor_points["Câble 1"], anchor_points["Câble 2"], anchor_points["Câble 3"], anchor_points["Câble 4"]],
-            [p1, p2, p3, p4],
-        ):
-            line = ax.plot([anchor[0], corner[0]], [anchor[1], corner[1]], [anchor[2], corner[2]], 'gray')[0]
-            lines.append(line)
-
-            mid = [(anchor[i] + corner[i]) / 2 for i in range(3)]
-            text = ax.text(mid[0], mid[1], mid[2] + 10, name, color='black', fontsize=9, ha='center')
-            texts.append(text)
-
-        # Matrices pour le plot_surface
-        X = np.array([[p1[0], p2[0]], [p3[0], p4[0]]], dtype=float)
-        Y = np.array([[p1[1], p2[1]], [p3[1], p4[1]]], dtype=float)
-        Z = np.array([[cz, cz], [cz, cz]], dtype=float)
-
-        plaque = ax.plot_surface(X, Y, Z, color='skyblue', alpha=0.8)
-
-        return lines + [plaque] + texts
-    
-    ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=600, blit=False)
-    return ani
-
-
-def animation_1(X_e_final, Y_e_final, phi_1_final, nombre_iteration, temps):
-    """
-    
-    Parameters
-    ----------
-    X_e_final : {float} Coordonnées sur l'axe x finale du centre de l'effecteur
-    Y_e_final : {float} Coordonnées sur l'axe y finale du centre de l'effecteur 
-    phi_1_final : {float} Angle de rotation finale autour de l'axe z du centre l'effecteur
-    nombre_iteration : {int} Nombre ditération pour la simulation
-    temps : {int} Temps necéssaire pour effectuer la simulation
-
-    Returns
-    -------
-    None.
-
-    """
-    X1 = np.linspace(0, X_e_final, nombre_iteration)
-    X2 = np.linspace(0, Y_e_final, nombre_iteration)
-    PHI = np.linspace(0, phi_1_final, nombre_iteration)
-    Etape = np.arange(nombre_iteration)
-
-    D1, D2, D3, D4 = [], [], [], []
-    V1, V2, V3, V4 = [], [], [], []
-
-    for i, j, k in zip(X1, X2, PHI):
-        vitesse_cable_actuel, deplacement_cable_actuel = inverse_test(i, j, k, temps)
-        print("\ndeplacement_cable_actuel: ", deplacement_cable_actuel)
-
-        D1.append(deplacement_cable_actuel[0][0])
-        D2.append(deplacement_cable_actuel[1][0])
-        D3.append(deplacement_cable_actuel[2][0])
-        D4.append(deplacement_cable_actuel[3][0])
-
-        V1.append(vitesse_cable_actuel[0][0])
-        V2.append(vitesse_cable_actuel[1][0])
-        V3.append(vitesse_cable_actuel[2][0])
-        V4.append(vitesse_cable_actuel[3][0])
-        
-        # Détection des distances de câbles négatives
-        if D1[-1] < 0 or D2[-1] < 0 or D3[-1] < 0 or D4[-1] < 0:
-            D1[-1] = D1[-2]
-            D2[-1] = D2[-2]
-            D3[-1] = D3[-2]
-            D4[-1] = D4[-2]
-            
-            V1[-1] = 0
-            V2[-1] = 0
-            V3[-1] = 0
-            V4[-1] = 0
-            
-       
-    # Plot des déplacements
-    fig_1, axs_1 = plt.subplots(nrows=2, ncols=2)
-    fig_1.suptitle("Tailles des câbles")
-    for ax, D, title in zip(axs_1.flat, [D1, D2, D3, D4], ["Câble 1", "Câble 2", "Câble 3", "Câble 4"]):
-        ax.plot(Etape, D, marker='o')
-        ax.set_title(title)
-        ax.set_xlabel("Itération")
-        ax.set_ylabel("Déplacement [mm]")
-        ax.grid()
-
-    # Plot des vitesses
-    fig_2, axs_2 = plt.subplots(nrows=2, ncols=2)
-    fig_2.suptitle("Vitesses linéaires des câbles")
-    for ax, V, title in zip(axs_2.flat, [V1, V2, V3, V4], ["Câble 1", "Câble 2", "Câble 3", "Câble 4"]):
-        ax.plot(Etape, V, marker='o')
-        ax.set_title(title)
-        ax.set_xlabel("Itération")
-        ax.set_ylabel("Vitesse [mm/s]")
-        ax.grid()
-
-    # Animation
-    global ani
-    ani = animation_test(D1, D2, D3, D4)
-
-    # Tracée de la trajectoire estimé
-    CX = []
-    CY = []
-    
-    for l1, l2, l3, l4 in zip(D1, D2, D3, D4):
-        dx = (l3 + l4 - l1 - l2) * 0.25
-        dy = (l1 + l3 - l2 - l4) * 0.25
-        cx = 1075 + dx
-        cy = 1075 + dy
-        CX.append(cx)
-        CY.append(cy)
-    
-    # Plot position estimée
-    fig_pos, ax_pos = plt.subplots()
-    ax_pos.plot(CX, CY, label="Trajectoire estimée", marker='X')
-    ax_pos.set_title("Position estimée du centre de la plaque")
-    ax_pos.set_xlabel("X [mm]")
-    ax_pos.set_ylabel("Y [mm]")
-    ax_pos.grid()
-    ax_pos.legend()
-    
-    
-
-    # Affichage
-    plt.show()
-
-        
-
-    
-
-## Modèle direct - Calcul de la pseudo inverse de la Jacobienne
-def direct():
-    J = inverse()
-    print("\n---- Modèle cinématique direct ---- ")
-    print("Variables d'entrée : \n", Y)
-    print("\nVariables de sortie : \n", X)
-    
-    # J = J.subs({X_e: 1, Y_e: 2, phi_1: 3})  # Substitution temporaire des valeurs variables
-    
-    J_T = np.transpose(J) 
-    print("\nJ_T : \n", J_T)
-    print("\nnp.shape(J_T) : \n", np.shape(J_T))
-    
-    J_prod = sympy.Matrix(np.dot(J_T, J))
-    print("\nJ_prod : \n", J_prod)
-    print("\nnp.shape(J_prod) : \n", np.shape(J_prod))
-    print("\nJ_prod.det() : \n", J_prod.det())
-    
-    J_prod_inv = J_prod.inv()
-    print("\nJ_prod_inv : \n", J_prod_inv)
-    print("\nnp.shape(J_prod_inv) : \n", np.shape(J_prod_inv))
-    
-    J_pseudo_inv = np.dot(J_prod_inv, J_T)
-    print("\nJ_pseudo_inv : \n", J_pseudo_inv)
-    print("\nnp.shape(J_pseudo_inv) : \n", np.shape(J_pseudo_inv))
-    
-
-################################# Méthode 2 ###################################
+################################# Modèle 2 ####################################
 
 # Matrice de rotation 2D selon un angle phi
 def rotation_matrix(phi):
@@ -393,7 +101,6 @@ def rotation_matrix(phi):
 def compute_attachment_points(X, Y, phi):
     R = rotation_matrix(phi)
     M = np.array([[X, Y]]) + (v_attache @ R.T)
-    print("compute_attachement_point :", np.shape(np.array([[X, Y]])))
     return np.array([[X, Y]]) + (v_attache @ R.T)
 
 
@@ -544,6 +251,7 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         plate, = ax.plot([], [], 'b-', lw=2)
         cables, = ax.plot([], [], 'k--', lw=1)
         center, = ax.plot([], [], 'ro')
+        traj_line, = ax.plot([], [], 'g-', linewidth=3, label="Trajectoire")
 
         def update(frame):
             X, Y, phi_1 = X_traj[frame], Y_traj[frame], phi_traj[frame]
@@ -555,8 +263,10 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
                 cable_y += [poulies[i, 1], A[i, 1], None]
             cables.set_data(cable_x, cable_y)
             center.set_data([X], [Y])
-            return plate, cables, center
+            traj_line.set_data(X_traj[:frame+1], Y_traj[:frame+1])  
 
+            return plate, cables, center, traj_line  
+        
         ani = FuncAnimation(fig, update, frames=len(X_traj), interval=50, blit=True)
         return ani
 
@@ -652,8 +362,7 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         ax.set_title(title)
         ax.set_xlabel("Itération")
         ax.set_ylabel("Vitesse [rad/itération]")
-        ax.grid()
-        
+        ax.grid()  
     
     # Affichage de tous les graphes
     plt.show()

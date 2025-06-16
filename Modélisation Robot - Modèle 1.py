@@ -85,7 +85,7 @@ p_3 = (200*q_3) / 2*np.pi # nombre de pas sur le moteur 3
 p_4 = (200*q_4) / 2*np.pi # nombre de pas sur le moteur 4
 
 
-################################# Fonctions ######################################
+################################# Modèle 1 ####################################
 
 
 # Calcul les vitesses et longueurs de câble pour un déplacement de l’effecteur en X_e, Y_e, phi_1 sur une durée "temps"
@@ -184,8 +184,8 @@ def animation_test(longueur_1, longueur_2, longueur_3, longueur_4):
 
         dx = (l2 + l4 - l1 - l3) * 0.25
         dy = (l1 + l2 - l3 - l4) * 0.25
-        cx = 1075 + dx
-        cy = 1090 + dy
+        cx = X_0 + dx
+        cy = Y_0 + dy
         cz = 0
 
         half = plaque_size / 2
