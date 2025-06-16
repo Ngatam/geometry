@@ -206,11 +206,6 @@ def inverse_test(X_e_exp, Y_e_exp, phi_1_exp, temps):
 
 
 def animation_test(longueur_1, longueur_2, longueur_3, longueur_4):
-    print("\nlongueur 1 = ", longueur_1)
-    print("\nlongueur 2 = ", longueur_2)
-    print("\nlongueur 3 = ", longueur_3)
-    print("\nlongueur 4 = ", longueur_4)
-
     cable_lengths = {
         "Câble 1": longueur_1,
         "Câble 2": longueur_2,
@@ -231,11 +226,6 @@ def animation_test(longueur_1, longueur_2, longueur_3, longueur_4):
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
 
-    # Repère 3D
-    ax.quiver(0, 0, 0, 100, 0, 0, color='r', arrow_length_ratio=0.05)
-    ax.quiver(0, 0, 0, 0, 100, 0, color='g', arrow_length_ratio=0.05)
-    ax.quiver(0, 0, 0, 0, 0, 100, color='b', arrow_length_ratio=0.05)
-
     anchor_points = {
         "Câble 1": [2150, 0, 0],
         "Câble 2": [2150, 2150, 0],
@@ -255,24 +245,19 @@ def animation_test(longueur_1, longueur_2, longueur_3, longueur_4):
         for text in texts:
             text.remove()
         if plaque:
-            plaque.remove()
+            try:
+                plaque.remove()
+            except Exception:
+                pass
 
         lines = []
         texts = []
 
-        # Longueurs des câbles à cet instant
         l1 = cable_lengths["Câble 1"][frame]
         l2 = cable_lengths["Câble 2"][frame]
         l3 = cable_lengths["Câble 3"][frame]
         l4 = cable_lengths["Câble 4"][frame]
-        
-        print("\nl1 = ", l1)
-        print("l2 = ", l2)
-        print("l3 = ", l3)
-        print("l4 = ", l4)
-        
 
-        # Calcul du centre de la plaque
         dx = (l2 + l4 - l1 - l3) * 0.25
         dy = (l1 + l2 - l3 - l4) * 0.25
         cx = 1075 + dx
@@ -297,17 +282,18 @@ def animation_test(longueur_1, longueur_2, longueur_3, longueur_4):
             text = ax.text(mid[0], mid[1], mid[2] + 10, name, color='black', fontsize=9, ha='center')
             texts.append(text)
 
-        # Matrices pour le plot_surface
         X = np.array([[p1[0], p2[0]], [p3[0], p4[0]]], dtype=float)
         Y = np.array([[p1[1], p2[1]], [p3[1], p4[1]]], dtype=float)
         Z = np.array([[cz, cz], [cz, cz]], dtype=float)
 
         plaque = ax.plot_surface(X, Y, Z, color='skyblue', alpha=0.8)
-
         return lines + [plaque] + texts
-    
-    ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=600, blit=False)
+
+    ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=300, blit=False)
+    print("\n✅ Animation lancée !")
+    plt.show()
     return ani
+
 
 
 def inverse_plot(X_e_final, Y_e_final, phi_1_final, nombre_iteration, temps):
@@ -356,6 +342,8 @@ def inverse_plot(X_e_final, Y_e_final, phi_1_final, nombre_iteration, temps):
     # Animation
     global ani
     ani = animation_test(D1, D2, D3, D4)
+    
+    plt.show()
 
     # Tracée de la trajectoire estimé
     CX = []
