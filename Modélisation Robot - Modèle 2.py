@@ -36,35 +36,6 @@ pas_mot = 1.8 # (en °) pas du moteur => 200 pas pour 1 tour
 r_p = 40 #(en mm) rayon interne des poulies
 lambda_troisieme = 740 # (en mm) longueur de cable supposée constante entre l'enrouleur et la poulie (pas de centre a centre)
 
-# Positions des poulies (points fixes) dans le plan
-poulies = np.array([
-    [l_1, h_1],  # P1 (en bas à droite)
-    [l_1, h_2],  # P2 (en haut à droite)
-    [0, h_1],    # P3 (en bas à gauche)
-    [0, h_2]     # P4 (en haut à gauche)
-])
-
-# Coordonnées des points d'attache de la plaque (dans son repère local)
-v_attache = np.array([
-    [ l/2, -L/2],  # Coin bas droite
-    [ l/2,  L/2],  # Coin haut droite
-    [-l/2, -L/2],  # Coin bas gauche
-    [-l/2,  L/2]   # Coin haut gauche
-])
-
-# Position intiale de l'effecteur - au centre du repère
-X_0 = 1010  # Position initiale du centre de la plaque en X
-Y_0 = 1075  # Position initiale du centre de la plaque en Y 
-
-## Modèle inverse - variables - position de l'effecteur
-X_e = sympy.symbols("X_e") # position de l'effecteur sur l'axe X de la structure
-Y_e = sympy.symbols("Y_e") # position de l'effecteur sur l'axe Y de la structure
-phi_1 = sympy.symbols("phi_1") # position angulaire de l'effecteur par rapport au repère de la base
-
-
-
-############################# Equations du système ############################
-
 ## Coefficients pour le calcul
 r = K * (e**2 + (rho**2)/2*np.pi)**1/2 # coefficient d'enroulement des enrouleurs
 X = [l_1, l_1, 0, 0] # position sur l'axe x_base des poulies
@@ -72,21 +43,25 @@ Y = [h_1, h_2, h_1, h_2] # position sur l'axe y_base des poulies
 a = [l/2, l/2, -l/2, -l/2] # position sur l'axe x_effecteur des points d'accroche
 b = [-L/2, L/2, -L/2, L/2] # position sur l'axe y_effecteur des points d'accroche
 
-## Modèle inverse - équations modèle analytique
-lambda_1 =   sqrt((X_0 + X_e - X[0] + a[0]*cos(phi_1) - b[0]*sin(phi_1))**2 + (Y_0 + Y_e - Y[0] + a[0]*sin(phi_1) + b[0]*cos(phi_1))**2) # longueur du câble de la poulie 1 (en mm)
-lambda_2 =   sqrt((X_0 + X_e - X[1] + a[1]*cos(phi_1) - b[1]*sin(phi_1))**2 + (Y_0 + Y_e - Y[1] + a[1]*sin(phi_1) + b[1]*cos(phi_1))**2) # longueur du câble de la poulie 2 (en mm)
-lambda_3 =   sqrt((X_0 + X_e - X[2] + a[2]*cos(phi_1) - b[2]*sin(phi_1))**2 + (Y_0 + Y_e - Y[2] + a[2]*sin(phi_1) + b[2]*cos(phi_1))**2) # longueur du câble de la poulie 3 (en mm)
-lambda_4 =   sqrt((X_0 + X_e - X[3] + a[3]*cos(phi_1) - b[3]*sin(phi_1))**2 + (Y_0 + Y_e - Y[3] + a[3]*sin(phi_1) + b[3]*cos(phi_1))**2) # longueur du câble de la poulie 4 (en mm)
-# ---
-q_1 = lambda_1 / r # angle de rotation du moteur 1 (en rad)
-q_2 = lambda_2 / r # angle de rotation du moteur 2 (en rad)
-q_3 = lambda_3 / r # angle de rotation du moteur 3 (en rad)
-q_4 = lambda_4 / r # angle de rotation du moteur 4 (en rad)
-# ---
-p_1 = pas_mot * q_1 # nombre de pas sur le moteur 1
-p_2 = pas_mot * q_2 # nombre de pas sur le moteur 2
-p_3 = pas_mot * q_3 # nombre de pas sur le moteur 3
-p_4 = pas_mot * q_4 # nombre de pas sur le moteur 4
+## Positions des poulies (points fixes) dans le plan
+poulies = np.array([
+    [l_1, h_1],  # P1 (en bas à droite)
+    [l_1, h_2],  # P2 (en haut à droite)
+    [0, h_1],    # P3 (en bas à gauche)
+    [0, h_2]     # P4 (en haut à gauche)
+])
+
+## Coordonnées des points d'attache de la plaque (dans son repère local)
+v_attache = np.array([
+    [ l/2, -L/2],  # Coin bas droite
+    [ l/2,  L/2],  # Coin haut droite
+    [-l/2, -L/2],  # Coin bas gauche
+    [-l/2,  L/2]   # Coin haut gauche
+])
+
+## Position intiale de l'effecteur - au centre du repère
+X_0 = 1010  # Position initiale du centre de la plaque en X
+Y_0 = 1075  # Position initiale du centre de la plaque en Y 
 
     
 
