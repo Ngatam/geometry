@@ -290,7 +290,7 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         J = jacobian(X, Y, phi_1)  # Jacobienne (d_rond L/ d_rond X); X = [x, y, phi_1) à l’instant courant 
         
         # Calcul de la pseudo inverse de la Jacobienne pour estimer variation de la position de la plaque
-        J_pseudo_inv = pinv(J.T @ J) @ J.T  # Pseudo-inverse de la 
+        J_pseudo_inv = pinv(J.T @ J) @ J.T  # Pseudo-inverse de la Jacobienne
         dl = J @ target_move  # Variation attendue des longueurs des câbles
         delta_q = J_pseudo_inv @ dl  # Variation de position à partir de la longueur des câbles attendues
         
