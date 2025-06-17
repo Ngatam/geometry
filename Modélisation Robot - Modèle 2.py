@@ -83,10 +83,10 @@ q_2 = lambda_2 / r # angle de rotation du moteur 2 (en rad)
 q_3 = lambda_3 / r # angle de rotation du moteur 3 (en rad)
 q_4 = lambda_4 / r # angle de rotation du moteur 4 (en rad)
 # ---
-p_1 = (200*q_1) / 2*np.pi # nombre de pas sur le moteur 1
-p_2 = (200*q_2) / 2*np.pi # nombre de pas sur le moteur 2
-p_3 = (200*q_3) / 2*np.pi # nombre de pas sur le moteur 3
-p_4 = (200*q_4) / 2*np.pi # nombre de pas sur le moteur 4
+p_1 = pas_mot * q_1 # nombre de pas sur le moteur 1
+p_2 = pas_mot * q_2 # nombre de pas sur le moteur 2
+p_3 = pas_mot * q_3 # nombre de pas sur le moteur 3
+p_4 = pas_mot * q_4 # nombre de pas sur le moteur 4
 
     
 
@@ -94,27 +94,80 @@ p_4 = (200*q_4) / 2*np.pi # nombre de pas sur le moteur 4
 
 # Matrice de rotation 2D selon un angle phi
 def rotation_matrix(phi):
-    return np.array([
+    """
+
+    Parameters
+    ----------
+    phi : {float} Angle de rotation autour de l'axe z en °
+
+    Returns
+    -------
+    R : {array} Matrice de rotation en 2D autour de l'axe z
+
+    """
+    R = np.array([
         [np.cos(phi), -np.sin(phi)],
         [np.sin(phi),  np.cos(phi)]
     ])
 
+    return R
+
 
 # Calcul des coordonnées globales des points d'attache de la plaque
 def compute_attachment_points(X, Y, phi):
+    """
+
+    Parameters
+    ----------
+    X : {float} Coordonnée sur x du point d'attache sur l'effecteur
+    Y : {float} Coordonnée sur y du point d'attache sur l'effecteur
+    phi : {float} Rotation en ° autour de l'axe z
+
+    Returns
+    -------
+    M : {array} Coordonées dans le repère global des points d'attache de l'effecteur
+
+    """
     R = rotation_matrix(phi)
     M = np.array([[X, Y]]) + (v_attache @ R.T)
-    return np.array([[X, Y]]) + (v_attache @ R.T)
+    return M
 
 
 # Calcul des longueurs de câble entre poulies et coins de la plaque
 def cable_lengths(X, Y, phi):
+    """
+
+    Parameters
+    ----------
+    X : {float} Coordonnée sur x du point d'attache sur l'effecteur
+    Y : {float} Coordonnée sur y du point d'attache sur l'effecteur
+    phi : {float} Rotation en ° autour de l'axe z
+
+    Returns
+    -------
+    L : {float} Distance entre le point d'attache i sur l'effecteur et le centre de la poulie. 
+
+    """
     A = compute_attachment_points(X, Y, phi) # Calcul les coordonées des points d'attache de la plaque
-    return np.linalg.norm(A - poulies, axis=1) # Renvoie la norme de la matrice qui est la différence des coordonées des points d'attache de la plaque actuellement et les coordonnées des poulies initialement
+    L = np.linalg.norm(A - poulies, axis=1) # Renvoie la norme de la matrice qui est la différence des coordonées des points d'attache de la plaque actuellement et les coordonnées des poulies initialement
+    return L
 
 
 # Calcul de la Jacobienne d_rond lambda/ d_rond X (variation des longueurs des câbles par rapport à X, Y, phi)
 def jacobian(X, Y, phi):
+    """
+
+    Parameters
+    ----------
+    X : {float} Coordonnée sur x du point d'attache sur l'effecteur
+    Y : {float} Coordonnée sur y du point d'attache sur l'effecteur
+    phi : {float} Rotation en ° autour de l'axe z
+
+    Returns
+    -------
+    J : {array} Jacobienne d_rond lambda/ d_rond X (variation des longueurs des câbles par rapport à X, Y, phi)
+
+    """
     A = compute_attachment_points(X, Y, phi)  # Calcul les coordonées des points d'attache de la plaque
     R = rotation_matrix(phi) # Matrice de rotation autour de l'axe z
     J = np.zeros((4, 3)) # Initialisation de la Jacobienne
@@ -131,7 +184,59 @@ def jacobian(X, Y, phi):
     return J
 
 
-def rectification_lambda
+# Rectification de l'expression de lambda (en prenant en compte le rayon de la poulie et la longueur totale du cable depuis l'enrouleur jusqu'à l'effecteur)
+def rectification_lambda(lambda_1, lambda_2, lambda_3, lambda_4, Y_e):
+    """
+
+    Parameters
+    ----------
+    lambda_1 : {float} longueur de câble 1 sans complexification du modèle. Distance entre le centre de la poulie 1 et le pooint d'attache 1 sur l'effecteur.
+    lambda_2 : {float} longueur de câble 2 sans complexification du modèle. Distance entre le centre de la poulie 2 et le pooint d'attache 2 sur l'effecteur.
+    lambda_3 : {float} longueur de câble 3 sans complexification du modèle. Distance entre le centre de la poulie 3 et le pooint d'attache 3 sur l'effecteur.
+    lambda_4 : {float} longueur de câble 4 sans complexification du modèle. Distance entre le centre de la poulie 4 et le pooint d'attache 4 sur l'effecteur.
+
+    Returns
+    -------
+    lambda_tot_1 : {float} longueur de câble total depuis le tambour 1 jusqu'au point d'attache 1 sur l'effecteur
+    lambda_tot_2 : {float} longueur de câble total depuis le tambour 2 jusqu'au point d'attache 2 sur l'effecteur
+    lambda_tot_3 : {float} longueur de câble total depuis le tambour 3 jusqu'au point d'attache 3 sur l'effecteur
+    lambda_tot_4 : {float} longueur de câble total depuis le tambour 4 jusqu'au point d'attache 4 sur l'effecteur
+
+    """    
+    # lambda_prime_i : correction sur la longueur de câble entre la poulie i et le point d'accroche i sur l'effecteur
+    lambda_prime_1 = sqrt(float(lambda_1)**2 + r_p**2)
+    lambda_prime_2 = sqrt(float(lambda_2)**2 + r_p**2)
+    lambda_prime_3 = sqrt(float(lambda_3)**2 + r_p**2)
+    lambda_prime_4 = sqrt(float(lambda_4)**2 + r_p**2)
+
+    # Clamp pour éviter les erreurs de domaine de asin
+    def safe_asin(x):
+        return math.asin(min(1.0, max(-1.0, x)))
+
+    # beta_i : angle angle entre le sommet de la poulie i et le point tangent entre la poulie i et le câble i
+    arg_beta_1 = (Y_e - h_1 - L/2 + r_p) / lambda_prime_1
+    arg_beta_2 = (h_2 - Y_e - L/2 + r_p) / lambda_prime_2
+    arg_beta_3 = (Y_e - h_1 - L/2 + r_p) / lambda_prime_3
+    arg_beta_4 = (h_2 - Y_e - L/2 + r_p) / lambda_prime_4
+
+    beta_1 = safe_asin(arg_beta_1)
+    beta_2 = safe_asin(arg_beta_2)
+    beta_3 = safe_asin(arg_beta_3)
+    beta_4 = safe_asin(arg_beta_4)
+
+    # lambda_sec_i : longueur de câble directement enroulé sur la poulie i
+    lambda_sec_1 = (beta_1 + math.pi / 2) * r_p
+    lambda_sec_2 = (beta_2 + math.pi / 2) * r_p
+    lambda_sec_3 = (beta_3 + math.pi / 2) * r_p
+    lambda_sec_4 = (beta_4 + math.pi / 2) * r_p
+
+    # lambda_tot_i : longueur de câble total depuis le tambour jusqu'au point d'attache sur l'effecteur
+    lambda_tot_1 = lambda_prime_1 + lambda_sec_1 + lambda_troisieme
+    lambda_tot_2 = lambda_prime_2 + lambda_sec_2 + lambda_troisieme
+    lambda_tot_3 = lambda_prime_3 + lambda_sec_3 + lambda_troisieme
+    lambda_tot_4 = lambda_prime_4 + lambda_sec_4 + lambda_troisieme
+
+    return lambda_tot_1, lambda_tot_2, lambda_tot_3, lambda_tot_4
 
 
 # Fonction principale de simulation
@@ -286,7 +391,7 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
 
     # Tracé des longueurs de câble
     fig_var, axs_var = plt.subplots(nrows=2, ncols=2)
-    fig_var.suptitle("Tailles des câbles")
+    fig_var.suptitle("Longueurs des câbles")
     l_traj_vec = np.array(l_traj)
     D1, D2, D3, D4 = l_traj_vec[:,0], l_traj_vec[:,1], l_traj_vec[:,2], l_traj_vec[:,3]
     for ax, D, title, color in zip(axs_var.flat, [D4, D2, D3, D1], ["Câble 4", "Câble 2", "Câble 3", "Câble 1"], ["red", "green", "blue", "purple"]):
@@ -315,8 +420,8 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
     # Tracé des pas
     fig_var, axs_var = plt.subplots(nrows=2, ncols=2)
     fig_var.suptitle("Pas des moteurs")
-    p_traj_vec = np.array(l_traj)
-    P1, P2, P3, P4 = 360*p_traj_vec[:,0]/(2*np.pi), 360*p_traj_vec[:,1]/(2*np.pi), 360*p_traj_vec[:,2]/(2*np.pi), 360*p_traj_vec[:,3]/(2*np.pi)
+    l_traj_vec = np.array(l_traj)
+    P1, P2, P3, P4 = pas_mot * l_traj_vec[:,0], pas_mot * l_traj_vec[:,1], pas_mot * l_traj_vec[:,2], pas_mot * l_traj_vec[:,3]
     for ax, P, title, color in zip(axs_var.flat, [P4, P2, P3, P1], ["Moteur 4", "Moteur 2", "Moteur 3", "Moteur 1"], ["red", "green", "blue", "purple"]):
         Etape = np.linspace(0, nb_points, np.shape(D1)[0])
         ax.plot(Etape, P, marker='o', color=color)
@@ -334,6 +439,7 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
     ax_pos.set_ylabel("Y [mm]")
     ax_pos.grid()
     
+    
     # Tracé de la rotation du centre de l’effecteur
     fig_rot, ax_rot = plt.subplots()
     fig_rot.suptitle("Rotation du centre de l'effecteur")
@@ -341,6 +447,7 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
     ax_rot.set_xlabel("Itération")
     ax_rot.set_ylabel("Angle [rad]")
     ax_rot.grid()
+
 
     # Tracé des vitesses linéaires des câbles
     fig_vit_lin, axs_vit_lin = plt.subplots(nrows=2, ncols=2)
@@ -356,6 +463,7 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         ax.set_ylabel("Vitesse [mm/itération]")
         ax.grid()
         
+        
     # Tracé des vitesses angulaires des moteurs
     fig_vit_ang, axs_vit_ang = plt.subplots(nrows=2, ncols=2)
     fig_vit_ang.suptitle("Vitesses angulaires des moteurs")
@@ -369,6 +477,29 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
         ax.set_xlabel("Itération")
         ax.set_ylabel("Vitesse [rad/itération]")
         ax.grid()  
+    
+    
+    # Tracé des longueurs totales de câble
+    fig_var, axs_var = plt.subplots(nrows=2, ncols=2)
+    fig_var.suptitle("Longueurs totales des câbles")
+    l_traj_vec = np.array(l_traj)
+    D1, D2, D3, D4 = l_traj_vec[:,0], l_traj_vec[:,1], l_traj_vec[:,2], l_traj_vec[:,3]
+    
+    lambda_tot_1, lambda_tot_2, lambda_tot_3, lambda_tot_4  = [], [], [], []
+    for l_tot_1, l_tot_2, l_tot_3, l_tot_4, Ye in zip(D1, D2, D3, D4, Y_traj):
+        l1, l2, l3, l4 = rectification_lambda(l_tot_1, l_tot_2, l_tot_3, l_tot_4, Ye)
+        lambda_tot_1.append(l1)
+        lambda_tot_2.append(l2)
+        lambda_tot_3.append(l3)
+        lambda_tot_4.append(l4)
+
+    for ax, D, title, color in zip(axs_var.flat, [lambda_tot_4, lambda_tot_2, lambda_tot_3, lambda_tot_1], ["Câble 4", "Câble 2", "Câble 3", "Câble 1"], ["red", "green", "blue", "purple"]):
+        Etape = np.linspace(0, nb_points, np.shape(D1)[0])
+        ax.plot(Etape, D, marker='o', color=color)
+        ax.set_title(title)
+        ax.set_xlabel("Itération")
+        ax.set_ylabel("Longueur totale de câble [mm]")
+        ax.grid()
     
     # Affichage de tous les graphes
     plt.show()
