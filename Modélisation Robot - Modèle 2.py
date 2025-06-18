@@ -234,15 +234,18 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
 
     Returns
     -------
-    Cette fonction fait la simulation du déplcement de l'effecteur du robot parallèle à câble de sa postion inital (le centre du repère)
+    Cette fonction fait la simulation du déplacement de l'effecteur du robot parallèle à câble de sa postion initale (le centre du repère)
     à une position final de coordonée X_final, Y_final et avec un angle phi_1_final.
     Elle affiche différent plot:
         - le 1er est l'animation liée à cette simulation
         - Le 2nd est constitué de 4 subplot qui chacun affichent la longueurs des 4 câbles en fonction des itérations
-        - Le 3ème  affiche la position du centre de l'effecteur en fonction de l'itération choisi
-        - le 4ème affiche la rotation du centre de l'effecteur en fonction de l'itération choisi
-        - Le 5ème affiche les vitesses linéaires des câbles en fonction de l'itération choisi
-        - Le 6ème affiche les vitesse de rotation des moteur en fonction de l'itération choisi 
+        - Le 3ème affiche la position angulaire des moteurs
+        - le 4ème affiche les pas des moteurs
+        - le 5ème affiche la position du centre de l'effecteur 
+        - le 6ème affiche la rotation du centre de l'effecteur
+        - Le 7ème affiche les vitesses linéaires des câbles 
+        - Le 8ème affiche les vitesse de rotation des moteur
+        - Le 9ème affiche le longueurs totales des câbles
         
     Cette fonction créé aussi un document xls avec les données de la simulation
         """
@@ -483,11 +486,17 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
     
     #----------- Création du fichier xls avec les données des test -----------#
     
-    # Listes avec les loongueurs des câbles
-    longeur_cable_1 = ["Longueurs câble 1"] + list(D1)
-    longeur_cable_2 = ["Longueurs câble 2"] + list(D2)
-    longeur_cable_3 = ["Longueurs câble 3"] + list(D3)
-    longeur_cable_4 = ["Longueurs câble 4"] + list(D4)
+    # Listes avec les longueurs des câbles
+    longueur_cable_1 = ["Longueurs câble 1"] + list(D1)
+    longueur_cable_2 = ["Longueurs câble 2"] + list(D2)
+    longueur_cable_3 = ["Longueurs câble 3"] + list(D3)
+    longueur_cable_4 = ["Longueurs câble 4"] + list(D4)
+    
+    # Listes avec les longueurs totales des câbles
+    longueur_totale_cable_1 = ["Longueurs totales câble 1"] + list(lambda_tot_1)
+    longueur_totale_cable_2 = ["Longueurs totales câble 2"] + list(lambda_tot_1)
+    longueur_totale_cable_3 = ["Longueurs totales câble 3"] + list(lambda_tot_1)
+    longueur_totale_cable_4 = ["Longueurs totales câble 4"] + list(lambda_tot_1)
 
     # Listes avec les vitesses des câbles
     vitesse_cable_1 = ["Vitesses câble 1"] + list(V1)
@@ -501,7 +510,8 @@ def animation_2(X_inital, Y_initial, phi_1_initial, X_final, Y_final, phi_1_fina
 
 
     # Regroupe-les dans une liste (ordre d’écriture)
-    arrays = [longeur_cable_1, longeur_cable_2, longeur_cable_3, longeur_cable_4,
+    arrays = [longueur_cable_1, longueur_cable_2, longueur_cable_3, longueur_cable_4,
+              longueur_totale_cable_1, longueur_totale_cable_2, longueur_totale_cable_3, longueur_totale_cable_4,
               vitesse_cable_1, vitesse_cable_2, vitesse_cable_3, vitesse_cable_4,
               trajectoire_x, trajectoire_y]
 
